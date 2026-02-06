@@ -28,12 +28,16 @@ int main() {
 
     std::cout << "Connected as Player " << player_id << "\n";
 
-    char buffer[64];
+    char buffer[2048];
     // bool game_over = false;
 
     while (true) {
+        std::memset(buffer, 0, sizeof(buffer));
         ssize_t bytes = read(fd_in, buffer, sizeof(buffer));
         if (bytes <= 0) break;
+
+        std::cout << "\033[2J\033[H";
+        std::cout << buffer;
 
         if (std::strncmp(buffer, "YOUR_TURN", 9) == 0) {
             std::cout << "Your turn! Press ENTER to roll dice...";

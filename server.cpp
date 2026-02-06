@@ -9,6 +9,11 @@
 #include <cstring>
 #include <pthread.h>
 #include <ctime>
+#include <sstream>
+#include <iomanip>
+#include <string>
+#include <algorithm>
+#include <vector>
 
 #include "common.hpp"
 
@@ -108,6 +113,66 @@ void reset_game(SharedData* shared) {
              "Game reset. New game started.");
     shared->log_pending = 1;
     pthread_mutex_unlock(&shared->log_mutex);
+}
+
+void print_leaderboard(int positions[], int num_players)
+{
+    std::vector<std::pair<int, int>> leaderboard;
+    for (int i = 0; i < num_players;++i)
+    {
+        leaderboard.emplace_back(i, positions[i]);
+    }
+
+    std::sort(leaderboard.begin(), leaderboard.end(), [](const auto& a, const auto& b)
+    {
+       return a.second > b.second;
+    });
+
+    std::cout << "=================================================\n";
+    std::cout << " LEADERBOARD:\n";
+
+    const char* suffixes[] = {"1st", "2nd", "3rd"};
+    for (size_t rank = 0; rank < leaderboard.size(); ++rank)
+    {
+        int player_id = leaderboard[rank].first;
+        int distance = leaderboard[rank].second;
+        std::cout << " " << suffixes[rank] << ": PLAYER " << (player_id + 1)
+                  << " (Distance: " << distance << ")\n";
+    }
+    std::cout << "==================================================\n";
+}
+
+std::string generate_race_track(int positions[], int goal=WIN_POSITION)
+{
+    std::ostringstream ss;
+
+    ss << "===============================================\n";
+    ss << " RACE TRACK (Goal: " << goal << "m)\n";
+    ss << "===============================================\n\n";
+
+    for (int p = 0; p < MAX_PLAYERS; ++p)
+    {
+        int pos = positions[p];
+        if (pos > goal) pos = goal;
+
+        ss << "P" << (p + 1) << " [" << std::setw(2) << std::setfill('0') << pos << "m]";
+        ss << "|";
+        for (int i = 0; i < pos; ++i) ss << "-";
+        ss << " -O- ";
+        for (int i = pos + 1; i < goal; ++i) ss << "-";
+        ss << "|\n";
+        ss << "        |";
+        for (int i = 0; i < pos; ++i) ss << " ";
+        ss << " | # | ";
+        for (int i = pos + 1; i < goal; ++i) ss << " ";
+        ss << "|\n";
+        ss << "        |";
+        for (int i = 0; i < pos; ++i) ss << "-";
+        ss << " -O- ";
+        for (int i = pos + 1; i < goal; ++i) ss << "-";
+        ss << "|\n\n";
+    }
+    return ss.str();
 }
 
 int main() {
@@ -227,7 +292,24 @@ int main() {
                 int dice = (rand() % 6) + 1;
 
                 pthread_mutex_lock(&shared->game_mutex);
-                shared->game.positions[player_id] += dice;
+                if(!shared->game.game_over) {
+                    shared->game.positions[player_id] += dice;
+                    print_leaderboard(shared->game.positions, MAX_PLAYERS); }
+
+                pthread_mutex_unlock(&shared->game_mutex);
+
+                std::string display = generate_race_track(shared->game.positions);
+                for (int i = 0; i < MAX_PLAYERS; i++)
+                {
+                    std::string out_fifo = "/tmp/player_" + std::to_string(i) + "_out";
+                    int fd = open(out_fifo.c_str(), O_WRONLY | O_NONBLOCK);
+                    if (fd >= 0)
+                    {
+                        write(fd, display.c_str(), display.size());
+                        close(fd);
+                    }
+                }
+                pthread_mutex_unlock(&shared->game_mutex);
 
                 std::cout << "[SERVER] Player " << player_id
                           << " rolled " << dice

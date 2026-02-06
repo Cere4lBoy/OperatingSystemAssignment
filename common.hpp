@@ -2,10 +2,11 @@
 #define COMMON_HPP
 
 #include <pthread.h>
+#include <string>
 
 constexpr int MAX_PLAYERS = 3;     // 🔴 CHANGED FROM 5 → 3
 constexpr int MAX_NAME_LEN = 32;
-constexpr int WIN_POSITION = 20;
+constexpr int WIN_POSITION = 40;
 
 // ---- Game State ----
 struct GameState {
@@ -44,6 +45,5 @@ struct SharedData {
 // ---- Logger ----
 char log_buffer[256];
 int log_pending;   // 0 = none, 1 = has log
-
 
 #endif
