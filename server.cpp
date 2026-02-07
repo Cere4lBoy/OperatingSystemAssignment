@@ -19,6 +19,10 @@
 
 constexpr const char* SHM_NAME = "/race_game_shm";
 
+void load_scores(SharedData* shared);
+void save_scores(SharedData* shared);
+void reset_game(SharedData* shared);
+
 // ========================================
 // Global pointer for signal handler
 // ========================================
@@ -217,7 +221,7 @@ void print_leaderboard(int positions[], int num_players)
     std::cout << "=================================================\n";
     std::cout << " LEADERBOARD:\n";
 
-    const char* suffixes[] = {"1st", "2nd", "3rd"};
+    const char* suffixes[] = {"1st", "2nd", "3rd", "4th", "5th"};
     for (size_t rank = 0; rank < leaderboard.size(); ++rank)
     {
         int player_id = leaderboard[rank].first;
@@ -471,7 +475,6 @@ int main() {
                         close(fd);
                     }
                 }
-                pthread_mutex_unlock(&shared->game_mutex);
 
                 std::cout << "[SERVER] Player " << player_id
                           << " rolled " << dice

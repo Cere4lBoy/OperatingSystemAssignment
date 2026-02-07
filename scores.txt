@@ -1,3 +1,5 @@
-Player0 5
+Player0 7
 Player1 0
 Player2 0
+Player3 0
+Player4 0
