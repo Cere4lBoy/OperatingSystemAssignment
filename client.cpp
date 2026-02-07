@@ -6,12 +6,11 @@
 
 int main() {
     int player_id;
-
-    std::cout << "Enter player ID (0, 1, or 2): ";
+    std::cout << "Enter player ID (0-4 for up to 5 players): ";
     std::cin >> player_id;
-
-    if (player_id < 0 || player_id > 2) {
-        std::cerr << "Invalid player ID\n";
+    
+    if (player_id < 0 || player_id > 4) {
+        std::cerr << "Invalid player ID (must be 0-4)\n";
         return 1;
     }
 
@@ -26,29 +25,28 @@ int main() {
         return 1;
     }
 
-    std::cout << "Connected as Player " << player_id << "\n";
+    std::cout << "✅ Connected as Player " << player_id << "\n";
+    std::cout << "Waiting for game to start...\n";
 
     char buffer[64];
-    // bool game_over = false;
 
     while (true) {
         ssize_t bytes = read(fd_in, buffer, sizeof(buffer));
         if (bytes <= 0) break;
 
         if (std::strncmp(buffer, "YOUR_TURN", 9) == 0) {
-            std::cout << "Your turn! Press ENTER to roll dice...";
+            std::cout << "\n🎲 Your turn! Press ENTER to roll dice...";
             std::cin.ignore();
             std::cin.get();
             write(fd_out, "ROLL\n", 5);
         }
         else if (std::strncmp(buffer, "YOU_WIN", 7) == 0) {
-            std::cout << "\n🎉 You win!\n";
+            std::cout << "\n🎉🎉🎉 YOU WIN! 🎉🎉🎉\n";
             std::cout << "Waiting for next game...\n";
-            continue;   // stay alive
+            continue;
         }
         else if (std::strncmp(buffer, "GAME_OVER", 9) == 0) {
             std::cout << "Game over. Waiting for next game...\n";
-            // game_over = true;
         }
     }
 
@@ -56,3 +54,4 @@ int main() {
     close(fd_out);
     return 0;
 }
+
