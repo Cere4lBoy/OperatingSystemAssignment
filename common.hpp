@@ -3,7 +3,7 @@
 
 #include <pthread.h>
 
-constexpr int MAX_PLAYERS = 5;     // ✅ FIXED: Support 3-5 players (was 3)
+constexpr int MAX_PLAYERS = 5;     
 constexpr int MAX_NAME_LEN = 32;
 constexpr int WIN_POSITION = 20;
 
@@ -12,11 +12,11 @@ struct GameState {
     int positions[MAX_PLAYERS];
     int current_turn;
     int active_players;
-    int num_players;        // NEW: Actual number of players (3, 4, or 5)
+    int num_players;        
     int game_active;
     int winner;
-    int game_over;          // 0 = running, 1 = ended
-    int turn_complete;      // NEW: Signal that current player finished their turn
+    int game_over;          
+    int turn_complete;      
 };
 
 // ---- Player Info ----
@@ -37,10 +37,11 @@ struct SharedData {
     
     // Logger
     char log_buffer[256];
-    int log_pending;        // 0 = no log, 1 = has log to write
+    int log_pending;        
     
     // Scores
     int scores[MAX_PLAYERS];
 };
 
 #endif
+
