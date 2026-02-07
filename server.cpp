@@ -14,11 +14,35 @@
 
 constexpr const char* SHM_NAME = "/race_game_shm";
 
+// ========================================
+// Global pointer for signal handler
+// ========================================
+SharedData* g_shared = nullptr;
+
 /* ========================================
    SIGNAL HANDLER - Reap Zombie Processes
    ======================================== */
 void sigchld_handler(int) {
     while (waitpid(-1, nullptr, WNOHANG) > 0);
+}
+
+// ========================================
+// SIGINT Handler for graceful shutdown
+// ========================================
+void sigint_handler(int) {
+    std::cout << "\n[SERVER] Received SIGINT. Shutting down gracefully...\n";
+    
+    if (g_shared) {
+        save_scores(g_shared);
+        
+        // Cleanup shared memory
+        munmap(g_shared, sizeof(SharedData));
+        shm_unlink(SHM_NAME);
+        
+        std::cout << "[SERVER] Cleanup complete. Goodbye!\n";
+    }
+    
+    exit(0);
 }
 
 /* ========================================
@@ -188,12 +212,17 @@ int main() {
         return 1;
     }
 
-    /* ---------- SIGNAL HANDLER ---------- */
+    /* ---------- SIGNAL HANDLERS ---------- */
     struct sigaction sa{};
     sa.sa_handler = sigchld_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
     sigaction(SIGCHLD, &sa, nullptr);
+
+    // ========================================
+    // Register SIGINT handler
+    // ========================================
+    signal(SIGINT, sigint_handler);
 
     /* ---------- SHARED MEMORY ---------- */
     shm_unlink(SHM_NAME);
@@ -217,6 +246,11 @@ int main() {
     }
 
     std::memset(shared, 0, sizeof(SharedData));
+
+    // ========================================
+    // Set global pointer for signal handler
+    // ========================================
+    g_shared = shared;
 
     /* ---------- PROCESS-SHARED MUTEX INIT ---------- */
     pthread_mutexattr_t attr;
@@ -359,7 +393,7 @@ int main() {
 
                 std::cout << "[SERVER] Player " << player_id
                           << " rolled " << dice
-                          << " → position " << shared->game.positions[player_id] << "\n";
+                          << " -> position " << shared->game.positions[player_id] << "\n";
 
                 pthread_mutex_lock(&shared->log_mutex);
                 snprintf(shared->log_buffer, sizeof(shared->log_buffer),
@@ -380,7 +414,7 @@ int main() {
                     // Log win
                     pthread_mutex_lock(&shared->log_mutex);
                     snprintf(shared->log_buffer, sizeof(shared->log_buffer),
-                             "🎉 Player %d WON! Total wins = %d",
+                             "Player %d WON! Total wins = %d",
                              player_id, shared->scores[player_id]);
                     shared->log_pending = 1;
                     pthread_mutex_unlock(&shared->log_mutex);
@@ -388,7 +422,7 @@ int main() {
                     save_scores(shared);
 
                     write(fd_out, "YOU_WIN\n", 8);
-                    std::cout << "[SERVER] 🎉 Player " << player_id << " WINS!\n";
+                    std::cout << "[SERVER] Player " << player_id << " WINS!\n";
 
                     shared->game.game_active = 0;
                     shared->game.game_over = 1;
@@ -408,6 +442,7 @@ int main() {
 
     /* ---------- PARENT WAITS ---------- */
     std::cout << "[SERVER] All player processes forked. Running...\n";
+    std::cout << "[SERVER] Press Ctrl+C to shutdown gracefully\n";
     while (true) pause();
 
     return 0;
